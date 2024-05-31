@@ -3,6 +3,7 @@ import time
 import RPi.GPIO as GPIO
 from joblib import load
 import numpy as np
+from collections import Counter
 
 # setting
 mpu = mpu6050(0x68)
@@ -15,7 +16,6 @@ model = load('model.joblib')
 scaler = load('scaler.joblib')
 
 # function
-
 def read_sensor_data():
     accel_data = mpu.get_accel_data()
     gyro_data = mpu.get_gyro_data()
@@ -41,21 +41,25 @@ def control_buzzer(action):
     # 'stand'일 경우에는 부저가 울리지 않음
 
 ###### Test Section ######
-
 try:
     while True:
-        # 센서 데이터 읽기 및 예측
-        new_data = read_sensor_data()
-        prediction = predict_action(new_data)
-        print("Predicted label:", prediction)
+        predictions = []
+
+        # 0.15초마다 데이터를 읽고 예측을 10번 수행
+        for _ in range(10):
+            new_data = read_sensor_data()
+            prediction = predict_action(new_data)
+            predictions.append(prediction)
+            time.sleep(0.15)  # 데이터 읽는 간격
+
+        # 10번의 예측 결과 중 가장 많이 나온 레이블 선택
+        most_common_prediction = Counter(predictions).most_common(1)[0][0]
+        print("Predicted label:", most_common_prediction)
 
         # 부저 제어
-        control_buzzer(prediction)
-
-        time.sleep(0.5)  # 데이터 읽는 간격
+        control_buzzer(most_common_prediction)
 
 except KeyboardInterrupt:
     print("Program stopped by user.")
 finally:
     GPIO.cleanup()
-
