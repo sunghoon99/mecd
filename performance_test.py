@@ -1,0 +1,81 @@
+import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+from sklearn.metrics import accuracy_score
+from joblib import dump
+
+# CSV 파일 로드
+df = pd.read_csv('test.csv', header=None, names=['ax', 'ay', 'az', 'rx', 'ry', 'rz', 'label'])
+
+# 데이터와 레이블 분리
+X = df[['ax', 'ay', 'az', 'rx', 'ry', 'rz']]
+y = df['label']
+
+# 데이터를 학습 세트와 테스트 세트로 분할
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+# 데이터 정규화
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+
+# 모델 리스트
+models = {
+    "Logistic Regression": LogisticRegression(),
+    "Random Forest": RandomForestClassifier(n_estimators=100, random_state=42),
+    "SVM": SVC(kernel='linear')
+}
+
+# 모델 학습 및 평가
+results = {}
+for name, model in models.items():
+    model.fit(X_train, y_train)
+    predictions = model.predict(X_test)
+    accuracy = accuracy_score(y_test, predictions)
+    results[name] = accuracy
+    print(f"{name} Accuracy: {accuracy}")
+
+# 가장 성능이 좋은 모델 선택
+best_model_name = max(results, key=results.get)
+best_model_accuracy = results[best_model_name]
+best_model = models[best_model_name]
+
+print(f"Best Model: {best_model_name} with Accuracy: {best_model_accuracy}")
+
+# 모델 및 스케일러 저장
+dump(best_model, 'model.joblib')
+dump(scaler, 'scaler.joblib')
+
+# 보고서 작성
+report = f"""
+모델 성능 비교 보고서
+======================
+
+사용된 모델:
+1. Logistic Regression
+2. Random Forest
+3. SVM
+
+모델 성능 평가 (정확도):
+- Logistic Regression: {results["Logistic Regression"]}
+- Random Forest: {results["Random Forest"]}
+- SVM: {results["SVM"]}
+
+선정된 모델:
+- {best_model_name}
+
+선정 이유:
+- {best_model_name} 모델이 {best_model_accuracy}의 가장 높은 정확도를 보였습니다.
+
+결론:
+- {best_model_name} 모델이 주어진 데이터셋에서 가장 우수한 성능을 보였으므로, 최종적으로 이 모델을 선택하였습니다.
+"""
+
+print(report)
+
+with open("model_comparison_report.txt", "w") as f:
+    f.write(report)
